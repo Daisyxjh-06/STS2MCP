@@ -8,6 +8,11 @@ __pycache__/
 *.pyo
 mcp/.venv/
 
+# Secrets / local env files (do not commit)
+.env
+**/.env
+agents/.env
+
 # Claude Code
 # .claude/
 .mcp.json
