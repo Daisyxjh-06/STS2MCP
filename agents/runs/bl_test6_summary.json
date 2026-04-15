@@ -1,0 +1,18 @@
+{
+  "run_id": "bl_test6",
+  "system": "baseline",
+  "seed": null,
+  "total_steps": 92,
+  "wall_seconds": 485.1,
+  "final": {
+    "floor": null,
+    "act": null,
+    "hp": null,
+    "max_hp": null,
+    "gold": null,
+    "deck_size": 0
+  },
+  "final_state_type": null,
+  "won": false,
+  "model": "4o-mini"
+}

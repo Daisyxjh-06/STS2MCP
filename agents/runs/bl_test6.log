@@ -1,0 +1,46 @@
+[runner] action rejected: {'status': 'error', 'error': 'Not in play phase - cannot act during enemy turn'}
+[runner] action rejected: {'status': 'error', 'error': 'Not in play phase - cannot act during enemy turn'}
+[runner] action rejected: {'status': 'error', 'error': 'Not in play phase - cannot act during enemy turn'}
+[runner] action rejected: {'status': 'error', 'message': "missing required param for claim_reward: 'index'"}
+[runner] action rejected: {'status': 'error', 'error': 'Map screen is not open'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 2 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 2 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 5 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 2 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 4 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 3 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 2 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 4 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 4 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 2 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 3 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 2 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 2 out of range (hand has 2 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 2 out of range (hand has 2 cards)'}
+[runner] forcing fallback after repeated ('play_card', "[('card_index', 2)]"): -> end_turn({})
+[runner] action rejected: {'status': 'error', 'error': 'Not in play phase - cannot act during enemy turn'}
+[runner] action rejected: {'status': 'error', 'error': 'Not in play phase - cannot act during enemy turn'}
+[runner] action rejected: {'status': 'error', 'error': 'Not in play phase - cannot act during enemy turn'}
+[runner] action rejected: {'status': 'error', 'message': "missing required param for claim_reward: 'index'"}
+[runner] action rejected: {'status': 'error', 'error': 'Map screen is not open'}
+[runner] action rejected: {'status': 'error', 'error': "Card '防御' cannot be played: EnergyCostTooHigh"}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 4 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 5 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': "Card '防御' cannot be played: EnergyCostTooHigh"}
+[runner] action rejected: {'status': 'error', 'error': "Card '防御' cannot be played: EnergyCostTooHigh"}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 4 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 5 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': "Card '防御' cannot be played: EnergyCostTooHigh"}
+[runner] action rejected: {'status': 'error', 'error': "Card '生存者' cannot be played: EnergyCostTooHigh"}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 3 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': "Card '防御' cannot be played: EnergyCostTooHigh"}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 4 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 3 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': "Card '防御' cannot be played: EnergyCostTooHigh"}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 3 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 3 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 3 out of range (hand has 3 cards)'}
+[runner] action rejected: {'status': 'error', 'error': 'card_index 4 out of range (hand has 3 cards)'}
+[runner] execute error: Server disconnected without sending a response.
+[runner] giving up after repeated get_state errors: [Errno 61] Connection refused
+[runner] done: steps=92 final={'floor': None, 'act': None, 'hp': None, 'max_hp': None, 'gold': None, 'deck_size': 0}

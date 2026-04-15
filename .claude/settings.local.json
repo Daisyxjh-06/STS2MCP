@@ -62,7 +62,12 @@
       "Bash(textutil -convert txt \"cs150-01 Proposal.docx\" -stdout)",
       "Bash(python3 -c ':*)",
       "Bash(textutil:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(wc -l docs/*.md)",
+      "Bash(curl -s http://127.0.0.1:15526/)",
+      "Bash(curl -s -g \"http://[::1]:15526/\")",
+      "Bash(curl -s -H \"Host: 127.0.0.1:15526\" http://127.0.0.1:15526/)",
+      "Bash(curl -s \"http://127.0.0.1:15526/api/v1/singleplayer?format=json\")"
     ]
   },
   "enableAllProjectMcpServers": true,
