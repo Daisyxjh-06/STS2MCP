@@ -1,0 +1,55 @@
+# ====================================
+# C object files
+# ====================================
+*.o
+*.a
+build/
+example_*
+
+
+# ====================================
+# Python bytecode, cache directories, libs
+# ====================================
+*__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg*
+
+# ====================================
+# Virtual environments and env files
+# ====================================
+venv/
+.venv/
+env/
+.env
+.env.*
+!.env.example
+
+
+# ====================================
+# Logs and temporary files
+# ====================================
+*.log
+logs/
+nohup.out
+*.bak
+*.tmp
+*.temp
+TODO.md
+
+
+# ====================================
+# Coverage / testing / caches
+# ====================================
+.pytest_cache/
+.mypy_cache/
+.cache/
+coverage.xml
+htmlcov/
+.DS_store
+
+# ====================================
+# Jupyter notebooks
+# ====================================
+*.ipynb_checkpoints/
