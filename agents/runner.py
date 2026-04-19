@@ -146,7 +146,10 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
                     pass
                 time.sleep(poll_interval)
                 continue
-            if stuck_counter > 30:
+            # Combat states stay as "monster"/"elite"/"boss" for the entire
+            # multi-turn fight — same_action_count already handles truly stuck
+            # combat, so don't abort based on state_type repetition alone.
+            if stuck_counter > 30 and st not in _COMBAT_STATES_RUNNER:
                 print(f"[runner] stuck at state {st} — aborting")
                 break
         else:
