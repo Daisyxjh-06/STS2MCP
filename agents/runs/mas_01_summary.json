@@ -1,0 +1,18 @@
+{
+  "run_id": "mas_01",
+  "system": "mas",
+  "seed": null,
+  "total_steps": 177,
+  "wall_seconds": 627.3,
+  "final": {
+    "floor": null,
+    "act": null,
+    "hp": null,
+    "max_hp": null,
+    "gold": null,
+    "deck_size": 0
+  },
+  "final_state_type": "menu",
+  "won": false,
+  "model": "4o-mini"
+}

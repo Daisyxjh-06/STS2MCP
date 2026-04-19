@@ -5,6 +5,7 @@ the game directly without going through an MCP process.
 """
 from __future__ import annotations
 
+import re
 import time
 from typing import Any, Dict, Optional
 
@@ -92,7 +93,19 @@ class GameClient:
             tool, params = _correct_tool_for_state(tool, params, state)
             params = _normalize_params(tool, params, state)
         if tool not in self._TOOL_MAP:
-            return {"status": "error", "message": f"Unknown tool '{tool}'"}
+            # LLM returned a card ID/name as the tool name (e.g. "DEFEND_IRONCLAD", "survivor")
+            # Try to match it against the hand and convert to play_card
+            if state is not None and re.match(r'^[A-Za-z][A-Za-z0-9_]+$', tool):
+                hand = (state.get("player") or {}).get("hand") or []
+                idx = _match_card(hand, tool)
+                if idx is not None:
+                    tool = "play_card"
+                    params = {"card_index": idx}
+                    params = _normalize_params(tool, params, state)
+                else:
+                    return {"status": "error", "message": f"Unknown tool '{tool}' (card not found in hand)"}
+            else:
+                return {"status": "error", "message": f"Unknown tool '{tool}'"}
         try:
             body = self._TOOL_MAP[tool](params)
         except KeyError as e:
@@ -127,16 +140,39 @@ def _correct_tool_for_state(tool: str, params: Dict[str, Any], state: Dict[str, 
     # "proceed" is accepted on many screens; if we're on map, they probably want choose_map_node 0
     if tool == "proceed" and st == "map":
         return "choose_map_node", {"index": params.get("index", 0)}
+    # event screen: advance_dialogue only works when in_dialogue=True; otherwise use choose_event
+    if tool == "advance_dialogue" and st == "event":
+        in_dialogue = (state.get("event") or {}).get("in_dialogue", False)
+        if not in_dialogue:
+            idx = params.get("index", 0)
+            return "choose_event", {"index": idx}
     # rewards screen: agent sometimes jumps to pick_card_reward; must claim_reward first
     if tool == "pick_card_reward" and st == "rewards":
         idx = params.get("index")
         if idx is None:
             idx = params.get("card_index", 0)
         return "claim_reward", {"index": idx}
-    # card_reward screen: claim_reward doesn't apply; it's pick_card_reward
-    if tool == "claim_reward" and st == "card_reward":
-        idx = params.get("card_index", params.get("index", 0))
-        return "pick_card_reward", {"card_index": idx}
+    # card_reward screen: remap wrong tools to pick_card_reward
+    if st == "card_reward":
+        if tool == "claim_reward":
+            idx = params.get("card_index", params.get("index", 0))
+            return "pick_card_reward", {"card_index": idx}
+        if tool in ("select_card", "confirm_selection"):
+            # agent used card_select tool on card_reward screen —
+            # try to resolve by card_id/name; fall back to index 0
+            cards = (state.get("card_reward") or {}).get("cards") or []
+            card_id = params.get("card_id") or params.get("name") or params.get("card")
+            idx = _match_card(cards, card_id) if card_id else params.get("index", params.get("card_index", 0))
+            if idx is None:
+                idx = 0
+            return "pick_card_reward", {"card_index": idx}
+        if tool == "cancel_selection":
+            return "skip_card_reward", {}
+    # card_select screen: pick_card_reward / skip_card_reward don't apply; use select_card
+    if st == "card_select":
+        if tool in ("pick_card_reward", "skip_card_reward"):
+            idx = params.get("card_index", params.get("index", 0))
+            return "select_card", {"index": idx}
     return tool, params
 
 
@@ -195,11 +231,14 @@ def _normalize_params(tool: str, params: Dict[str, Any], state: Dict[str, Any]) 
 
     elif tool == "pick_card_reward":
         if "card_index" not in p:
-            cards = (state.get("card_reward") or {}).get("cards") or []
-            idx = _match_card(cards, p.get("card_id") or p.get("name"))
-            if idx is not None:
-                p["card_index"] = idx
-        p.pop("card_id", None); p.pop("name", None)
+            if "index" in p:
+                p["card_index"] = p.pop("index")
+            else:
+                cards = (state.get("card_reward") or {}).get("cards") or []
+                idx = _match_card(cards, p.get("card_id") or p.get("name"))
+                if idx is not None:
+                    p["card_index"] = idx
+        p.pop("card_id", None); p.pop("name", None); p.pop("index", None)
 
     elif tool == "select_card":
         if "index" not in p:
@@ -208,6 +247,24 @@ def _normalize_params(tool: str, params: Dict[str, Any], state: Dict[str, Any]) 
             if idx is not None:
                 p["index"] = idx
         p.pop("card_id", None); p.pop("name", None)
+
+    elif tool == "choose_rest":
+        if "index" not in p:
+            options = (state.get("rest_site") or {}).get("options") or []
+            # match by id or name if provided, else default to first enabled option
+            key = p.get("option") or p.get("id") or p.get("name")
+            idx = None
+            if key:
+                k = str(key).lower()
+                for o in options:
+                    if str(o.get("id", "")).lower() == k or str(o.get("name", "")).lower() == k:
+                        idx = o["index"]
+                        break
+            if idx is None:
+                enabled = [o["index"] for o in options if o.get("is_enabled")]
+                idx = enabled[0] if enabled else 0
+            p["index"] = idx
+        p.pop("option", None); p.pop("id", None); p.pop("name", None)
 
     elif tool in ("use_potion", "discard_potion"):
         if "slot" not in p:

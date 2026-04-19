@@ -41,8 +41,60 @@ def _player_summary(state: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+_ANSI = {
+    "reset": "\033[0m", "bold": "\033[1m",
+    "cyan": "\033[36m", "yellow": "\033[33m", "green": "\033[32m",
+    "red": "\033[31m", "magenta": "\033[35m", "dim": "\033[2m",
+}
+
+_AGENT_COLORS = {
+    "combat": "\033[31m",    # red
+    "strategic": "\033[34m", # blue
+    "economy": "\033[32m",   # green
+    "baseline": "\033[36m",  # cyan
+}
+
+
+def _print_step(step: int, system: str, st: str, summary: Dict[str, Any],
+                proposals: Dict[str, Any], chosen: Dict[str, Any], agreement: bool) -> None:
+    R, B, DIM = _ANSI["reset"], _ANSI["bold"], _ANSI["dim"]
+    C, Y, G = _ANSI["cyan"], _ANSI["yellow"], _ANSI["green"]
+
+    floor = summary.get("floor", "?")
+    hp    = summary.get("hp", "?")
+    maxhp = summary.get("max_hp", "?")
+    gold  = summary.get("gold", "?")
+
+    print(f"\n{B}{'─'*60}{R}")
+    print(f"{B}Step {step:>4}{R}  {C}{st:<18}{R}  "
+          f"Floor {floor}  HP {hp}/{maxhp}  Gold {gold}")
+    print(f"{DIM}system: {system}{R}")
+
+    for agent_name, prop in proposals.items():
+        color = _AGENT_COLORS.get(agent_name, "")
+        action = prop.get("action", {})
+        conf   = prop.get("confidence", "?")
+        just   = prop.get("justification", "")
+        tool   = action.get("tool", "?")
+        params = action.get("params") or {}
+        param_str = "  ".join(f"{k}={v}" for k, v in params.items()) if params else ""
+        marker = f"{G}✓{R}" if action == chosen else f"{DIM}·{R}"
+        print(f"  {marker} {color}{B}{agent_name:<12}{R}  "
+              f"[conf={conf}]  {Y}{tool}{R}({param_str})")
+        if just:
+            print(f"    {DIM}{just[:120]}{R}")
+
+    if len(proposals) > 1:
+        agree_str = f"{G}agree{R}" if agreement else f"\033[31mdisagree{R}"
+        chosen_agent = next(
+            (n for n, p in proposals.items() if p.get("action") == chosen), "?")
+        print(f"  → chosen: {Y}{B}{chosen.get('tool')}{R}  "
+              f"({agree_str}, picked from {chosen_agent})")
+
+
 def run_one(system: str, run_id: str, out_dir: Path, model: str,
-            max_steps: int = 2000, poll_interval: float = 1.0) -> Dict[str, Any]:
+            max_steps: int = 2000, poll_interval: float = 1.0,
+            verbose: bool = False) -> Dict[str, Any]:
     llm = LLMClient(model=model)
     game = GameClient()
     logger = RunLogger(out_dir, run_id, system)
@@ -85,6 +137,15 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
         # Detect getting stuck in the same state
         if st == last_state_type:
             stuck_counter += 1
+            # card_select / hand_select need confirm after a few selections
+            if stuck_counter == 5 and st in ("card_select", "hand_select"):
+                print(f"[runner] auto-confirming {st} after {stuck_counter} steps")
+                try:
+                    game.execute("confirm_selection", {}, state=state)
+                except Exception:
+                    pass
+                time.sleep(poll_interval)
+                continue
             if stuck_counter > 30:
                 print(f"[runner] stuck at state {st} — aborting")
                 break
@@ -106,6 +167,9 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
             agreement = True
 
         summary = _player_summary(state)
+        if verbose:
+            _print_step(logger.n_steps, system, st, summary,
+                        proposals, chosen, agreement)
         logger.log_step(
             state_type=st,
             floor=summary["floor"],
@@ -173,10 +237,12 @@ def main():
     ap.add_argument("--out-dir", default="runs")
     ap.add_argument("--model", default="4o-mini")
     ap.add_argument("--max-steps", type=int, default=2000)
+    ap.add_argument("--verbose", "-v", action="store_true",
+                    help="Print per-step decision summary to stdout")
     args = ap.parse_args()
 
     run_one(args.system, args.run_id, Path(args.out_dir), args.model,
-            max_steps=args.max_steps)
+            max_steps=args.max_steps, verbose=args.verbose)
 
 
 if __name__ == "__main__":

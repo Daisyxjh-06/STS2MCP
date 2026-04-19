@@ -8,25 +8,38 @@ from combat_agent import CombatAgent
 from economy_agent import EconomyAgent
 from strategic_agent import StrategicAgent
 
-# Which agents are relevant for each state_type.
-# Combat-heavy screens go to Combat; progression/deck screens go to Strategic;
-# gold / shop screens go to Economy. Rewards are multi-agent (Strategic owns
-# card choice, Economy owns gold/potion/relic claim order).
+# Which agents participate in each state_type decision.
+#
+# Design follows the proposal:
+#   - Combat: short-term survival, prefers rest sites when HP is low
+#   - Strategic: long-term deck strength, prefers elites and card rewards
+#   - Economy: resource efficiency, prefers shops and gold
+#
+# All three agents vote on map routing because their objectives directly
+# conflict there (combat→rest, strategic→elite, economy→shop).
+# The Coordinator picks the highest-confidence proposal.
 ROUTING: Dict[str, List[str]] = {
-    "monster": ["combat"],
-    "elite": ["combat"],
-    "boss": ["combat"],
-    "hand_select": ["combat"],
-    "rewards": ["strategic", "economy"],
-    "card_reward": ["strategic"],
-    "card_select": ["strategic"],
+    # Pure combat — only combat agent has relevant expertise
+    "monster":       ["combat"],
+    "elite":         ["combat"],
+    "boss":          ["combat"],
+    "hand_select":   ["combat"],
+    # Map routing — all three agents vote (core coordination scenario)
+    "map":           ["combat", "strategic", "economy"],
+    # Rest site — combat cares about healing, strategic about smithing
+    "rest_site":     ["combat", "strategic"],
+    # Post-combat rewards — strategic picks cards, economy manages order
+    "rewards":       ["strategic", "economy"],
+    "card_reward":   ["strategic"],
+    "card_select":   ["strategic"],
     "bundle_select": ["strategic"],
-    "relic_select": ["strategic", "economy"],
-    "treasure": ["strategic", "economy"],
-    "map": ["strategic"],
-    "event": ["strategic", "economy"],
-    "rest_site": ["strategic"],
-    "shop": ["economy", "strategic"],
+    # Relic / treasure — both strategic value and economy cost matter
+    "relic_select":  ["strategic", "economy"],
+    "treasure":      ["strategic", "economy"],
+    # Events — may offer gold, HP, or cards
+    "event":         ["strategic", "economy"],
+    # Shop — economy leads, strategic advises on card purchases
+    "shop":          ["economy", "strategic"],
     "fake_merchant": ["economy", "strategic"],
     "crystal_sphere": ["strategic"],
 }

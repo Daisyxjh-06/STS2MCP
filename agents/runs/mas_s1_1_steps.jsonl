@@ -1,0 +1,1 @@
+{"step": 0, "t": 3.85, "state_type": "elite", "floor": 8, "hp": 12, "gold": 30, "proposals": {"combat": {"action": {"tool": "end_turn", "params": {}}, "confidence": 0.9, "justification": "No energy available to play any cards, must end turn."}}, "chosen": {"tool": "end_turn", "params": {}}, "agreement": true}

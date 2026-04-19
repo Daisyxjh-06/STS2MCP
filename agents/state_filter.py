@@ -44,7 +44,8 @@ def _copy_common(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def for_combat(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Combat agent: hand, energy, enemies, player powers/orbs/potions."""
+    """Combat agent: hand, energy, enemies, player powers/orbs/potions.
+    Also receives map when routing, so it can prefer rest sites when HP is low."""
     view = _copy_common(state)
     view["player"] = _player_combat(state.get("player", {}))
     # Enemies live under state.battle.enemies in STS2.
@@ -56,7 +57,7 @@ def for_combat(state: Dict[str, Any]) -> Dict[str, Any]:
         "enemies": battle.get("enemies", []),
     }
     # keep combat-related optional blobs if present
-    for k in ("hand_select", "ascension"):
+    for k in ("hand_select", "ascension", "map", "rest_site"):
         if k in state:
             view[k] = state[k]
     return view
@@ -91,7 +92,7 @@ def for_economy(state: Dict[str, Any]) -> Dict[str, Any]:
         "potions": p.get("potions"),
         "deck_size": len(p.get("deck", []) or []),
     }
-    for k in ("shop", "fake_merchant", "rewards"):
+    for k in ("shop", "fake_merchant", "rewards", "event", "relic_select", "treasure", "map"):
         if k in state:
             view[k] = state[k]
     return view
