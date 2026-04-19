@@ -129,9 +129,26 @@ _SELF_TARGETS = {"self", "player", "hero", "me"}
 _COMBAT_STATES = {"monster", "elite", "boss"}
 
 
+_NON_COMBAT_END_TURN_FALLBACK = {
+    "rest_site":   ("proceed", {}),
+    "rewards":     ("proceed", {}),
+    "shop":        ("proceed", {}),
+    "fake_merchant": ("proceed", {}),
+    "event":       ("proceed", {}),
+    "card_reward": ("skip_card_reward", {}),
+    "relic_select": ("skip_relic", {}),
+    "treasure":    ("proceed", {}),
+    "map":         ("choose_map_node", {"index": 0}),
+}
+
+
 def _correct_tool_for_state(tool: str, params: Dict[str, Any], state: Dict[str, Any]):
     """Fix common tool/state mismatches before the request hits the mod."""
     st = state.get("state_type")
+    # end_turn is combat-only. Outside combat, LLM usually means "I'm done,
+    # move on" — remap to the screen's natural dismiss action.
+    if tool == "end_turn" and st not in _COMBAT_STATES and st in _NON_COMBAT_END_TURN_FALLBACK:
+        return _NON_COMBAT_END_TURN_FALLBACK[st]
     # LLMs often mix these up:
     if tool == "combat_select_card" and st in _COMBAT_STATES:
         return "play_card", params
@@ -146,6 +163,19 @@ def _correct_tool_for_state(tool: str, params: Dict[str, Any], state: Dict[str, 
         if not in_dialogue:
             idx = params.get("index", 0)
             return "choose_event", {"index": idx}
+    # LLMs often collapse the tool name to the state_type ("event") or use
+    # alternate verbs like "choose" / "select". Remap those on the event screen.
+    if st == "event" and tool in ("event", "choose", "select", "choose_option", "select_event"):
+        idx = params.get("index",
+              params.get("choose_event",
+              params.get("option_index",
+              params.get("choice",
+              params.get("option", 0)))))
+        try:
+            idx = int(idx)
+        except (TypeError, ValueError):
+            idx = 0
+        return "choose_event", {"index": idx}
     # rewards screen: agent sometimes jumps to pick_card_reward; must claim_reward first
     if tool == "pick_card_reward" and st == "rewards":
         idx = params.get("index")
@@ -173,6 +203,86 @@ def _correct_tool_for_state(tool: str, params: Dict[str, Any], state: Dict[str, 
         if tool in ("pick_card_reward", "skip_card_reward"):
             idx = params.get("card_index", params.get("index", 0))
             return "select_card", {"index": idx}
+        # LLM often collapses tool to the state name ("card_select") or uses
+        # ad-hoc verbs like "pick_card" / "select". Remap to select_card.
+        if tool in ("card_select", "pick_card", "pick", "select", "choose_card", "choose"):
+            idx = params.get("index",
+                  params.get("card_index",
+                  params.get("choice", 0)))
+            try:
+                idx = int(idx)
+            except (TypeError, ValueError):
+                idx = 0
+            return "select_card", {"index": idx}
+        if tool in ("confirm", "confirm_card_select"):
+            return "confirm_selection", {}
+        if tool in ("cancel", "cancel_card_select"):
+            return "cancel_selection", {}
+    # bundle_select screen: similar collapse ("bundle_select" -> select_bundle)
+    if st == "bundle_select":
+        if tool in ("bundle_select", "pick_bundle", "choose_bundle"):
+            idx = params.get("index", params.get("bundle_index", 0))
+            try:
+                idx = int(idx)
+            except (TypeError, ValueError):
+                idx = 0
+            return "select_bundle", {"index": idx}
+    # hand_select screen: common swaps
+    if st == "hand_select":
+        if tool in ("hand_select", "pick_card", "select"):
+            idx = params.get("card_index", params.get("index", 0))
+            try:
+                idx = int(idx)
+            except (TypeError, ValueError):
+                idx = 0
+            return "combat_select_card", {"card_index": idx}
+    # rest_site screen: LLM sometimes reuses choose_map_node or collapses to
+    # the state name. The only valid tool here is choose_rest.
+    if st == "rest_site":
+        if tool in ("choose_map_node", "rest_site", "rest", "choose", "select"):
+            idx = params.get("index", params.get("option", params.get("choice", 0)))
+            try:
+                idx = int(idx)
+            except (TypeError, ValueError):
+                idx = 0
+            return "choose_rest", {"index": idx}
+    # shop screen: collapse / alternate verbs -> shop_purchase
+    if st == "shop":
+        if tool in ("shop", "shop_buy", "buy", "purchase"):
+            idx = params.get("index", params.get("item_index", params.get("choice", 0)))
+            try:
+                idx = int(idx)
+            except (TypeError, ValueError):
+                idx = 0
+            return "shop_purchase", {"index": idx}
+    # relic_select / treasure
+    if st == "relic_select":
+        if tool in ("relic_select", "pick_relic", "choose_relic"):
+            idx = params.get("index", params.get("relic_index", 0))
+            try:
+                idx = int(idx)
+            except (TypeError, ValueError):
+                idx = 0
+            return "select_relic", {"index": idx}
+    if st == "treasure":
+        treasure_blob = state.get("treasure") or {}
+        can_proceed = bool(treasure_blob.get("can_proceed"))
+        # advance_dialogue / event tools don't apply in treasure rooms —
+        # either we still need to claim, or we're ready to proceed.
+        if tool in ("treasure", "claim", "claim_relic", "open_chest",
+                    "advance_dialogue", "choose_event", "event"):
+            if can_proceed or not treasure_blob.get("relics"):
+                return "proceed", {}
+            idx = params.get("index", params.get("relic_index", 0))
+            try:
+                idx = int(idx)
+            except (TypeError, ValueError):
+                idx = 0
+            return "claim_treasure", {"index": idx}
+        # If a relic already got claimed, claim_treasure will error with
+        # "Relic collection is not visible"; swap to proceed.
+        if tool == "claim_treasure" and can_proceed:
+            return "proceed", {}
     return tool, params
 
 
@@ -242,11 +352,17 @@ def _normalize_params(tool: str, params: Dict[str, Any], state: Dict[str, Any]) 
 
     elif tool == "select_card":
         if "index" not in p:
-            cards = (state.get("card_select") or {}).get("cards") or []
-            idx = _match_card(cards, p.get("card_id") or p.get("name"))
-            if idx is not None:
-                p["index"] = idx
-        p.pop("card_id", None); p.pop("name", None)
+            if "card_index" in p:
+                try:
+                    p["index"] = int(p["card_index"])
+                except (TypeError, ValueError):
+                    pass
+            if "index" not in p:
+                cards = (state.get("card_select") or {}).get("cards") or []
+                idx = _match_card(cards, p.get("card_id") or p.get("name"))
+                if idx is not None:
+                    p["index"] = idx
+        p.pop("card_id", None); p.pop("name", None); p.pop("card_index", None)
 
     elif tool == "choose_rest":
         if "index" not in p:
@@ -272,6 +388,20 @@ def _normalize_params(tool: str, params: Dict[str, Any], state: Dict[str, Any]) 
             if alt is not None:
                 p["slot"] = alt
         p.pop("potion_index", None); p.pop("index", None); p.pop("potion_slot", None)
+
+    elif tool == "choose_event":
+        if "index" not in p:
+            for k in ("choose_event", "option_index", "choice", "option", "card_index"):
+                if k in p:
+                    try:
+                        p["index"] = int(p[k])
+                    except (TypeError, ValueError):
+                        pass
+                    break
+            if "index" not in p:
+                p["index"] = 0
+        for k in ("choose_event", "option_index", "choice", "option", "card_index"):
+            p.pop(k, None)
 
     elif tool == "claim_reward":
         if "index" not in p:

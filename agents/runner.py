@@ -160,6 +160,18 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
             time.sleep(poll_interval)
             continue
 
+        # Skip the agent entirely during the enemy turn — the mod will reject
+        # any player action with "Not in play phase" until IsPlayPhase flips
+        # back. state_type alone ("monster"/"elite"/"boss") doesn't distinguish
+        # player vs. enemy turn, so check battle.is_play_phase directly.
+        if st in _COMBAT_STATES_RUNNER:
+            battle = state.get("battle") or {}
+            play_phase = battle.get("is_play_phase")
+            turn = battle.get("turn")
+            if play_phase is False or (isinstance(turn, str) and turn.lower() == "enemy"):
+                time.sleep(poll_interval)
+                continue
+
         # Decide
         if coordinator is not None:
             chosen, proposals, agreement = coordinator.decide(state)
@@ -200,6 +212,22 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
                 tool, params = "proceed", {}
             elif st == "map":
                 tool, params = "choose_map_node", {"index": 0}
+            elif st == "event":
+                tool, params = "choose_event", {"index": 0}
+            elif st == "rest_site":
+                tool, params = "choose_rest", {"index": 0}
+            elif st == "shop":
+                tool, params = "proceed", {}
+            elif st == "card_reward":
+                tool, params = "skip_card_reward", {}
+            elif st == "relic_select":
+                tool, params = "skip_relic", {}
+            elif st == "treasure":
+                can_proceed = bool((state.get("treasure") or {}).get("can_proceed"))
+                if can_proceed:
+                    tool, params = "proceed", {}
+                else:
+                    tool, params = "claim_treasure", {"index": 0}
             print(f"[runner] forcing fallback after repeated {action_key}: -> {tool}({params})")
             same_action_count = 0
             last_action_key = (tool, repr(sorted(params.items())))

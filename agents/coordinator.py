@@ -18,6 +18,29 @@ from strategic_agent import StrategicAgent
 # All three agents vote on map routing because their objectives directly
 # conflict there (combat→rest, strategic→elite, economy→shop).
 # The Coordinator picks the highest-confidence proposal.
+# Tools that are meaningful on each state_type. Used during arbitration to
+# filter out proposals whose tool the mod will reject on the current screen
+# (e.g. combat agent suggesting choose_map_node while on rest_site).
+VALID_TOOLS: Dict[str, set] = {
+    "monster":       {"play_card", "end_turn", "use_potion", "discard_potion"},
+    "elite":         {"play_card", "end_turn", "use_potion", "discard_potion"},
+    "boss":          {"play_card", "end_turn", "use_potion", "discard_potion"},
+    "hand_select":   {"combat_select_card", "combat_confirm", "cancel_selection"},
+    "map":           {"choose_map_node"},
+    "rest_site":     {"choose_rest", "proceed"},
+    "rewards":       {"claim_reward", "proceed"},
+    "card_reward":   {"pick_card_reward", "skip_card_reward", "proceed"},
+    "card_select":   {"select_card", "confirm_selection", "cancel_selection"},
+    "bundle_select": {"select_bundle", "confirm_bundle", "cancel_bundle"},
+    "relic_select":  {"select_relic", "skip_relic", "proceed"},
+    "treasure":      {"claim_treasure", "proceed"},
+    "event":         {"choose_event", "advance_dialogue", "proceed"},
+    "shop":          {"shop_purchase", "proceed"},
+    "fake_merchant": {"shop_purchase", "proceed"},
+    "crystal_sphere": {"crystal_set_tool", "crystal_click", "crystal_proceed"},
+}
+
+
 ROUTING: Dict[str, List[str]] = {
     # Pure combat — only combat agent has relevant expertise
     "monster":       ["combat"],
@@ -71,8 +94,18 @@ class Coordinator:
         futures = {n: self._executor.submit(self.agents[n].propose, state) for n in names}
         proposals = {n: f.result() for n, f in futures.items()}
 
-        # Arbitration: pick highest confidence. Agreement = all agents chose same tool.
-        chosen_name = max(proposals, key=lambda n: proposals[n]["confidence"])
+        # Arbitration: prefer proposals whose tool is valid on this state_type;
+        # among those, pick highest confidence. Falls back to raw max-confidence
+        # if no proposal uses a valid tool (so the auto-correct layer in
+        # game_client can still try to salvage it).
+        valid = VALID_TOOLS.get(state_type)
+        candidates = proposals
+        if valid:
+            ok = {n: p for n, p in proposals.items()
+                  if p.get("action", {}).get("tool") in valid}
+            if ok:
+                candidates = ok
+        chosen_name = max(candidates, key=lambda n: candidates[n]["confidence"])
         chosen = proposals[chosen_name]["action"]
         tools = {p["action"]["tool"] for p in proposals.values()}
         agreement = len(tools) == 1
