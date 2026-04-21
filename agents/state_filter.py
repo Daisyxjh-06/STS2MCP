@@ -24,11 +24,44 @@ def _player_core(p: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _parse_energy(energy_raw: Any) -> int:
+    """Extract current energy as int regardless of API shape."""
+    if isinstance(energy_raw, int):
+        return energy_raw
+    if isinstance(energy_raw, dict):
+        return int(energy_raw.get("current") or 0)
+    try:
+        return int(energy_raw)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _annotate_hand(hand: Any, energy: int) -> Any:
+    """Add can_play flag to each card based on current energy."""
+    if not isinstance(hand, list):
+        return hand
+    result = []
+    for card in hand:
+        if isinstance(card, dict):
+            cost_raw = card.get("cost")
+            try:
+                cost = int(cost_raw)
+                can_play = cost <= energy
+            except (TypeError, ValueError):
+                can_play = True  # X-cost or unknown — let LLM decide
+            result.append({**card, "can_play": can_play})
+        else:
+            result.append(card)
+    return result
+
+
 def _player_combat(p: Dict[str, Any]) -> Dict[str, Any]:
     base = _player_core(p)
+    energy = _parse_energy(p.get("energy"))
     base.update({
-        "energy": p.get("energy"),
-        "hand": p.get("hand"),
+        "energy": energy,
+        "hand": _annotate_hand(p.get("hand"), energy),
+        "deck": p.get("deck"),
         "draw_pile_count": p.get("draw_pile_count") or len(p.get("draw_pile", []) or []),
         "discard_pile_count": p.get("discard_pile_count") or len(p.get("discard_pile", []) or []),
         "exhaust_pile_count": p.get("exhaust_pile_count") or len(p.get("exhaust_pile", []) or []),
@@ -56,11 +89,35 @@ def for_combat(state: Dict[str, Any]) -> Dict[str, Any]:
         "is_play_phase": battle.get("is_play_phase"),
         "enemies": battle.get("enemies", []),
     }
-    # keep combat-related optional blobs if present
-    for k in ("hand_select", "ascension", "map", "rest_site"):
+    # include screen-specific blobs only when relevant
+    st = state.get("state_type", "")
+    for k in ("hand_select", "ascension", "rest_site"):
         if k in state:
             view[k] = state[k]
+    # map data only when actually on the map screen
+    if st == "map" and "map" in state:
+        view["map"] = state["map"]
     return view
+
+
+# Map from state_type to the single screen data key each agent should receive.
+# Only the active screen's data is included — prevents agents from confusing
+# background data (e.g. map is always present) with the current decision context.
+_SCREEN_KEY: Dict[str, str] = {
+    "map":          "map",
+    "rewards":      "rewards",
+    "card_reward":  "card_reward",
+    "card_select":  "card_select",
+    "bundle_select":"bundle_select",
+    "relic_select": "relic_select",
+    "treasure":     "treasure",
+    "event":        "event",
+    "rest_site":    "rest_site",
+    "shop":         "shop",
+    "fake_merchant":"fake_merchant",
+    "crystal_sphere":"crystal_sphere",
+    "hand_select":  "hand_select",
+}
 
 
 def for_strategic(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -71,12 +128,10 @@ def for_strategic(state: Dict[str, Any]) -> Dict[str, Any]:
     core["deck"] = p.get("deck")
     core["potions"] = p.get("potions")
     view["player"] = core
-    for k in (
-        "map", "rewards", "card_reward", "card_select", "bundle_select",
-        "relic_select", "treasure", "event", "rest_site",
-    ):
-        if k in state:
-            view[k] = state[k]
+    # Only include data for the current active screen.
+    k = _SCREEN_KEY.get(state.get("state_type", ""))
+    if k and k in state:
+        view[k] = state[k]
     return view
 
 
@@ -90,17 +145,28 @@ def for_economy(state: Dict[str, Any]) -> Dict[str, Any]:
         "max_hp": p.get("max_hp"),
         "relics": [r.get("id") if isinstance(r, dict) else r for r in p.get("relics", [])],
         "potions": p.get("potions"),
-        "deck_size": len(p.get("deck", []) or []),
+        "deck": p.get("deck"),
     }
-    for k in ("shop", "fake_merchant", "rewards", "event", "relic_select", "treasure", "map"):
-        if k in state:
-            view[k] = state[k]
+    # Only include data for the current active screen.
+    k = _SCREEN_KEY.get(state.get("state_type", ""))
+    if k and k in state:
+        view[k] = state[k]
     return view
 
 
 def for_baseline(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Baseline gets everything — single-agent condition in the experiment."""
-    return state
+    """Baseline gets everything, but with the same hand annotation as combat agent."""
+    st = state.get("state_type", "")
+    if st not in ("monster", "elite", "boss", "hand_select"):
+        return state
+    # Deep-copy only the player subtree so we don't mutate the original state.
+    import copy
+    view = dict(state)
+    p = copy.copy(state.get("player") or {})
+    energy = _parse_energy(p.get("energy"))
+    p["hand"] = _annotate_hand(p.get("hand"), energy)
+    view["player"] = p
+    return view
 
 
 VIEWS = {

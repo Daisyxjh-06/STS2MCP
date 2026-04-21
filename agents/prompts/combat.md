@@ -27,7 +27,9 @@ Your domain: in-combat decisions (state_type: monster / elite / boss / hand_sele
 
 ## Output Format
 
-Propose ONE action. Output strictly this JSON (no prose, no code fences):
+Propose ONE action. Output in exactly this format:
+
+STRATEGY: <one sentence — what archetype this deck is and how it shapes your approach this turn>
 {"action": {"tool": "<name>", "params": {...}}, "confidence": 0.0-1.0, "justification": "short reason"}
 
 Valid tools: `play_card`, `end_turn`, `use_potion`, `discard_potion`, `combat_select_card`, `combat_confirm`, `choose_map_node`

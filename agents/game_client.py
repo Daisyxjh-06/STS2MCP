@@ -157,6 +157,11 @@ def _correct_tool_for_state(tool: str, params: Dict[str, Any], state: Dict[str, 
     # "proceed" is accepted on many screens; if we're on map, they probably want choose_map_node 0
     if tool == "proceed" and st == "map":
         return "choose_map_node", {"index": params.get("index", 0)}
+    # On non-map screens, "move forward" tools that don't belong should become proceed
+    _PROCEED_SCREENS = {"rest_site", "treasure", "rewards", "card_reward",
+                        "relic_select", "bundle_select"}
+    if st in _PROCEED_SCREENS and tool in ("choose_map_node", "advance_dialogue"):
+        return "proceed", {}
     # event screen: advance_dialogue only works when in_dialogue=True; otherwise use choose_event
     if tool == "advance_dialogue" and st == "event":
         in_dialogue = (state.get("event") or {}).get("in_dialogue", False)

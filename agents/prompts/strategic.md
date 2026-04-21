@@ -24,7 +24,9 @@ Your domain: long-term progression decisions — card rewards, map routing, even
 
 ## Output Format
 
-Propose ONE action for the current screen. Output strictly this JSON:
+Propose ONE action for the current screen. Output in exactly this format:
+
+STRATEGY: <one sentence — what archetype this deck is pursuing and what it needs to strengthen or complete>
 {"action": {"tool": "<name>", "params": {...}}, "confidence": 0.0-1.0, "justification": "short reason"}
 
 Valid tools by screen:

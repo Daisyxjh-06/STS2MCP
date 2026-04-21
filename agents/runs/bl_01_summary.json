@@ -1,0 +1,18 @@
+{
+  "run_id": "bl_01",
+  "system": "baseline",
+  "seed": null,
+  "total_steps": 98,
+  "wall_seconds": 456.4,
+  "final": {
+    "floor": null,
+    "act": null,
+    "hp": null,
+    "max_hp": null,
+    "gold": null,
+    "deck_size": 0
+  },
+  "final_state_type": "menu",
+  "won": false,
+  "model": "4o-mini"
+}

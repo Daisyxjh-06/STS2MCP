@@ -49,8 +49,9 @@ ROUTING: Dict[str, List[str]] = {
     "hand_select":   ["combat"],
     # Map routing — all three agents vote (core coordination scenario)
     "map":           ["combat", "strategic", "economy"],
-    # Rest site — combat cares about healing, strategic about smithing
-    "rest_site":     ["combat", "strategic"],
+    # Rest site — purely a strategic decision (heal vs upgrade); combat agent
+    # has no valid rest_site tools and consistently hallucinates choose_map_node
+    "rest_site":     ["strategic"],
     # Post-combat rewards — strategic picks cards, economy manages order
     "rewards":       ["strategic", "economy"],
     "card_reward":   ["strategic"],

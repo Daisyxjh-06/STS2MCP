@@ -27,6 +27,11 @@ _AUTO_ADVANCE = {"overlay", "unknown"}
 
 _COMBAT_STATES_RUNNER = {"monster", "elite", "boss"}
 
+# Guard choose_map_node only when NOT on a screen where game_client can
+# correct it (rest_site corrects it to proceed).
+# All other mismatches are handled by game_client._correct_tool_for_state.
+_MAP_TOOL_ALLOWED_STATES = {"map", "rest_site"}
+
 
 def _player_summary(state: Dict[str, Any]) -> Dict[str, Any]:
     p = state.get("player") or {}
@@ -37,7 +42,7 @@ def _player_summary(state: Dict[str, Any]) -> Dict[str, Any]:
         "hp": p.get("hp"),
         "max_hp": p.get("max_hp"),
         "gold": p.get("gold"),
-        "deck_size": len(p.get("deck", []) or []),
+        "deck_size": len(p.get("deck") or []) or p.get("deck_size") or 0,
     }
 
 
@@ -72,15 +77,18 @@ def _print_step(step: int, system: str, st: str, summary: Dict[str, Any],
 
     for agent_name, prop in proposals.items():
         color = _AGENT_COLORS.get(agent_name, "")
-        action = prop.get("action", {})
-        conf   = prop.get("confidence", "?")
-        just   = prop.get("justification", "")
-        tool   = action.get("tool", "?")
-        params = action.get("params") or {}
+        action   = prop.get("action", {})
+        conf     = prop.get("confidence", "?")
+        just     = prop.get("justification", "")
+        strategy = prop.get("strategy", "")
+        tool     = action.get("tool", "?")
+        params   = action.get("params") or {}
         param_str = "  ".join(f"{k}={v}" for k, v in params.items()) if params else ""
         marker = f"{G}✓{R}" if action == chosen else f"{DIM}·{R}"
         print(f"  {marker} {color}{B}{agent_name:<12}{R}  "
               f"[conf={conf}]  {Y}{tool}{R}({param_str})")
+        if strategy:
+            print(f"    {DIM}strategy: {strategy[:120]}{R}")
         if just:
             print(f"    {DIM}{just[:120]}{R}")
 
@@ -108,6 +116,7 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
 
     consecutive_errors = 0
     last_state_type = None
+    prev_state_type = None
     stuck_counter = 0
     last_action_key = None
     same_action_count = 0
@@ -154,16 +163,21 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
                 break
         else:
             stuck_counter = 0
+            prev_state_type = last_state_type
             last_state_type = st
 
         if st in _AUTO_ADVANCE:
             time.sleep(poll_interval)
             continue
 
+        # After rest_site the map screen has a loading animation — wait before acting.
+        if st == "map" and prev_state_type == "rest_site":
+            time.sleep(2.5)
+
         # Skip the agent entirely during the enemy turn — the mod will reject
         # any player action with "Not in play phase" until IsPlayPhase flips
         # back. state_type alone ("monster"/"elite"/"boss") doesn't distinguish
-        # player vs. enemy turn, so check battle.is_play_phase directly.
+        # player vs. enemy turn, so check battle.is_play_phase / turn.
         if st in _COMBAT_STATES_RUNNER:
             battle = state.get("battle") or {}
             play_phase = battle.get("is_play_phase")
@@ -208,7 +222,8 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
         if same_action_count >= 3:
             if st in _COMBAT_STATES_RUNNER:
                 tool, params = "end_turn", {}
-            elif st == "rewards":
+            elif st in ("rewards", "rest_site", "treasure",
+                        "card_reward", "relic_select", "bundle_select"):
                 tool, params = "proceed", {}
             elif st == "map":
                 tool, params = "choose_map_node", {"index": 0}
@@ -236,10 +251,35 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
             time.sleep(poll_interval)
             continue
 
+        # Guard: only block choose_map_node on screens where game_client
+        # cannot correct it (i.e. not map and not rest_site).
+        if tool == "choose_map_node" and st not in _MAP_TOOL_ALLOWED_STATES:
+            print(f"[runner] dropping 'choose_map_node': current state is {st!r}")
+            fallback_tool, fallback_params = None, {}
+            for _name, _prop in sorted(proposals.items(),
+                                       key=lambda x: -x[1].get("confidence", 0)):
+                _t = (_prop.get("action") or {}).get("tool", "noop")
+                _p = (_prop.get("action") or {}).get("params") or {}
+                if _t not in ("noop", "choose_map_node"):
+                    fallback_tool, fallback_params = _t, _p
+                    print(f"[runner] fallback to {_t!r} from {_name}")
+                    break
+            if fallback_tool:
+                tool, params = fallback_tool, fallback_params
+            else:
+                time.sleep(poll_interval)
+                continue
+
         try:
             resp = game.execute(tool, params, state=state)
             if isinstance(resp, dict) and resp.get("status") == "error":
                 print(f"[runner] action rejected: {resp}")
+                err = str(resp.get("error", ""))
+                if "Map screen is not open" in err:
+                    time.sleep(2.5)
+                elif "EnergyCostTooHigh" in err and st in _COMBAT_STATES_RUNNER:
+                    # Agent proposed a card it can't afford — end turn instead.
+                    game.execute("end_turn", {}, state=state)
         except Exception as e:
             print(f"[runner] execute error: {e}")
         time.sleep(poll_interval)

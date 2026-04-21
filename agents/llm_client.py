@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+_LLM_TIMEOUT = 45.0  # seconds per request attempt
 
 from dotenv import load_dotenv
 from llmproxy import LLMProxy
@@ -26,21 +29,46 @@ class LLMClient:
         self._proxy = LLMProxy()
 
     def generate(self, system: str, query: str, session_id: str,
-                 temperature: Optional[float] = 0.3, lastk: int = 0) -> str:
-        res = self._proxy.generate(
-            model=self.model,
-            system=system,
-            query=query,
-            temperature=temperature,
-            lastk=lastk,
-            session_id=session_id,
-            rag_usage=False,
-        )
-        if isinstance(res, dict):
-            if "error" in res:
-                raise RuntimeError(f"LLMProxy error: {res}")
-            return res.get("result") or res.get("response") or ""
-        return str(res)
+                 temperature: Optional[float] = 0.3, lastk: int = 0,
+                 _retry: int = 3) -> str:
+        for attempt in range(_retry):
+            result: list = [None]
+            error: list = [None]
+
+            def _call():
+                try:
+                    result[0] = self._proxy.generate(
+                        model=self.model,
+                        system=system,
+                        query=query,
+                        temperature=temperature,
+                        lastk=lastk,
+                        session_id=session_id,
+                        rag_usage=False,
+                    )
+                except Exception as e:
+                    error[0] = e
+
+            t = threading.Thread(target=_call, daemon=True)
+            t.start()
+            t.join(timeout=_LLM_TIMEOUT)
+            if t.is_alive():
+                raise RuntimeError(f"LLM request timed out after {_LLM_TIMEOUT}s")
+            if error[0]:
+                raise error[0]
+            res = result[0]
+            if isinstance(res, dict):
+                if "error" in res:
+                    err_str = str(res.get("error", ""))
+                    if "429" in err_str and attempt < _retry - 1:
+                        wait = 5.0 * (attempt + 1)
+                        print(f"[llm] 429 rate limit, retrying in {wait}s (attempt {attempt+1}/{_retry})")
+                        time.sleep(wait)
+                        continue
+                    raise RuntimeError(f"LLMProxy error: {res}")
+                return res.get("result") or res.get("response") or ""
+            return str(res)
+        raise RuntimeError("generate: exhausted retries")
 
     def generate_json(self, system: str, query: str, session_id: str,
                       max_retries: int = 2, **kw) -> Dict[str, Any]:

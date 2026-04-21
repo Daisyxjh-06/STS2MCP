@@ -29,7 +29,9 @@ Your domain: resource management — gold, shop purchases, potion management out
 
 ## Output Format
 
-Propose ONE action. Output strictly this JSON:
+Propose ONE action. Output in exactly this format:
+
+STRATEGY: <one sentence — what this deck needs resource-wise based on current deck contents>
 {"action": {"tool": "<name>", "params": {...}}, "confidence": 0.0-1.0, "justification": "short reason"}
 
 Valid tools by screen:
