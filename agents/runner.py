@@ -212,6 +212,21 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
         tool = chosen.get("tool", "noop")
         params = chosen.get("params") or {}
 
+        # If the agent returned noop because of an LLM error (e.g. 429),
+        # don't count it toward same_action_count — that would trigger the
+        # forced-fallback logic mid-combat and waste a player turn. Just
+        # back off and let the next tick try again.
+        if tool == "noop":
+            _just = ""
+            for _p in proposals.values():
+                _just = (_p.get("justification") or "")
+                if "LLM error" in _just or "LLMProxy error" in _just:
+                    break
+            if "LLM error" in _just or "LLMProxy error" in _just:
+                print(f"[runner] LLM-error noop, sleeping 15s before retry")
+                time.sleep(15.0)
+                continue
+
         # Break repeated-same-action loops by forcing a safe fallback.
         action_key = (tool, repr(sorted((params or {}).items())))
         if action_key == last_action_key:

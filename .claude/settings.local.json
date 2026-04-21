@@ -67,7 +67,15 @@
       "Bash(curl -s http://127.0.0.1:15526/)",
       "Bash(curl -s -g \"http://[::1]:15526/\")",
       "Bash(curl -s -H \"Host: 127.0.0.1:15526\" http://127.0.0.1:15526/)",
-      "Bash(curl -s \"http://127.0.0.1:15526/api/v1/singleplayer?format=json\")"
+      "Bash(curl -s \"http://127.0.0.1:15526/api/v1/singleplayer?format=json\")",
+      "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/python -u runner.py --system baseline --run-id bl_04 --verbose)",
+      "Bash(tee runs/bl_04.log)",
+      "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/python -c \"import ast; ast.parse\\(open\\('llm_client.py'\\).read\\(\\)\\); ast.parse\\(open\\('runner.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
+      "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/python -u runner.py --system baseline --run-id bl_05 --verbose)",
+      "Bash(tee runs/bl_05.log)",
+      "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/python -u -c ' *)",
+      "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/python *)",
+      "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/jupyter nbconvert *)"
     ]
   },
   "enableAllProjectMcpServers": true,

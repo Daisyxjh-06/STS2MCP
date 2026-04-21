@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 _LLM_TIMEOUT = 45.0  # seconds per request attempt
+_MIN_INTERVAL = 1.2  # minimum seconds between LLM calls (process-wide)
+_last_call_t = [0.0]
 
 from dotenv import load_dotenv
 from llmproxy import LLMProxy
@@ -30,7 +32,13 @@ class LLMClient:
 
     def generate(self, system: str, query: str, session_id: str,
                  temperature: Optional[float] = 0.3, lastk: int = 0,
-                 _retry: int = 3) -> str:
+                 _retry: int = 6) -> str:
+        now = time.time()
+        gap = _MIN_INTERVAL - (now - _last_call_t[0])
+        if gap > 0:
+            time.sleep(gap)
+        _last_call_t[0] = time.time()
+
         for attempt in range(_retry):
             result: list = [None]
             error: list = [None]
@@ -61,9 +69,10 @@ class LLMClient:
                 if "error" in res:
                     err_str = str(res.get("error", ""))
                     if "429" in err_str and attempt < _retry - 1:
-                        wait = 5.0 * (attempt + 1)
+                        wait = min(60.0, 10.0 * (2 ** attempt))
                         print(f"[llm] 429 rate limit, retrying in {wait}s (attempt {attempt+1}/{_retry})")
                         time.sleep(wait)
+                        _last_call_t[0] = time.time()
                         continue
                     raise RuntimeError(f"LLMProxy error: {res}")
                 return res.get("result") or res.get("response") or ""

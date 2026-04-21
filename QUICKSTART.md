@@ -60,6 +60,87 @@ python -m experiments.analyze --runs-dir runs --out-dir runs/analysis
 
 ---
 
+## 数据记录 / 后续分析
+
+每次 `runner.py` 跑起来后，都会在 `agents/runs/` 下自动写入以下本地文件，可用于成功率、性能、决策行为等分析。**不需要额外开关**，只要指定 `--run-id` 就会产出。
+
+### 产出文件
+
+| 文件 | 写入时机 | 内容 | 典型用途 |
+|------|---------|------|---------|
+| `{run_id}_steps.jsonl` | 每个 agent 决策步追加一行 | `step, t, state_type, floor, hp, gold, proposals{tool,params,confidence,justification}, chosen, agreement` | 逐步复盘、分歧率、agent 贡献度、justification 文本分析 |
+| `{run_id}_summary.json` | 运行结束时写入 | `run_id, system, seed, model, total_steps, wall_seconds, final{floor,act,hp,max_hp,gold,deck_size}, final_state_type, won` | 单次 run 的整体成绩 |
+| `run_scores.md` | 运行结束时追加一行 | `run_id \| system \| model \| seed \| floor \| hp \| won \| eval_score \| steps \| wall_s` | 跨 run 汇总表；直接算 baseline vs MAS 的成功率 |
+| `{run_id}.log` *(可选)* | 你用 `tee` 时才有 | runner 的 stdout | 查 `[runner] action rejected` 等运行期错误 |
+
+> `eval_score = floor * 10 + (200 if won else 0)`（见 `agents/logger.py`）
+
+### 可选：把 stdout 也存下来
+
+```bash
+python -u runner.py --system mas --run-id mas_01 --verbose 2>&1 | tee runs/mas_01.log
+```
+这样终端里看到的所有 `action rejected` / `forcing fallback` 都会落盘，配合 jsonl 一起看更容易定位问题。
+
+### 成功率 / 性能的常用查询
+
+```bash
+# 成功率（按 system 分组）
+python3 -c "
+import json, glob
+from collections import defaultdict
+g = defaultdict(lambda: [0,0])
+for p in glob.glob('agents/runs/*_summary.json'):
+    d = json.load(open(p))
+    g[d['system']][0] += 1
+    g[d['system']][1] += int(bool(d.get('won')))
+for k,(n,w) in g.items():
+    print(f'{k}: {w}/{n} = {w/n:.1%}')
+"
+
+# 平均到达层数 / 平均步数 / 平均耗时
+python3 -c "
+import json, glob, statistics as s
+from collections import defaultdict
+agg = defaultdict(lambda: defaultdict(list))
+for p in glob.glob('agents/runs/*_summary.json'):
+    d = json.load(open(p))
+    agg[d['system']]['floor'].append((d.get('final') or {}).get('floor') or 0)
+    agg[d['system']]['steps'].append(d['total_steps'])
+    agg[d['system']]['wall'].append(d['wall_seconds'])
+for sys_, m in agg.items():
+    print(sys_, {k: round(s.mean(v),1) for k,v in m.items()})
+"
+
+# 每 agent 的被采纳率（用 jsonl）
+cat agents/runs/*_steps.jsonl | python3 -c "
+import json, sys
+from collections import Counter
+c = Counter()
+for line in sys.stdin:
+    d = json.loads(line)
+    win = next((n for n,p in d['proposals'].items() if p['action'] == d['chosen']), '?')
+    c[win] += 1
+print(c.most_common())
+"
+```
+
+### 跑批量实验后汇总
+
+```bash
+python -m experiments.run_batch --system mas      --seeds 1,2,3,4,5 --model 4o-mini
+python -m experiments.run_batch --system baseline --seeds 1,2,3,4,5 --model 4o-mini
+cat agents/runs/run_scores.md    # 两组并列对比
+```
+
+### 已知数据盲区
+
+- jsonl 里 `chosen` 只记录"agent 选了什么"，**不记录 Mod 是否真的执行成功**。若需区分"LLM 想对但被驳回" vs "成功落地"，目前要去看对应的 `.log`；要写进 jsonl 需要改 `runner.py + logger.py`。
+- 未记录 LLM token 用量 / 单步 LLM 耗时 / 每个 agent 的 latency。如需计入成本维度的分析可以后续扩展。
+- 敌方回合 skip 和 `_AUTO_ADVANCE` 跳过的 tick 不进 jsonl（这些步骤没有 agent 决策）。
+
+---
+
 ### 参数说明
 
 | 参数 | 说明 | 默认值 |

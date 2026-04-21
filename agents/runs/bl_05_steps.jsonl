@@ -1,0 +1,1 @@
+{"step": 0, "t": 209.36, "state_type": "event", "floor": 1, "hp": 60, "gold": 99, "proposals": {"baseline": {"action": {"tool": "noop", "params": {}}, "confidence": 0.0, "justification": "LLM error: LLMProxy error: {'error': 'HTTP 429: {\"message\":\"Limit Exceeded\"}', 'status_code': 429}", "strategy": ""}}, "chosen": {"tool": "noop", "params": {}}, "agreement": true}
