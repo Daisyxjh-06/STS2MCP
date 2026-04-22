@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -14,8 +15,10 @@ class RunLogger:
         self.run_id = run_id
         self.system = system  # "mas" or "baseline"
         self.seed = seed
-        self.steps_path = self.run_dir / f"{run_id}_steps.jsonl"
-        self.summary_path = self.run_dir / f"{run_id}_summary.json"
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_prefix = f"{run_id}_{ts}"
+        self.steps_path = self.run_dir / f"{file_prefix}_steps.jsonl"
+        self.summary_path = self.run_dir / f"{file_prefix}_summary.json"
         self.t0 = time.time()
         self.n_steps = 0
         # truncate prior file if any

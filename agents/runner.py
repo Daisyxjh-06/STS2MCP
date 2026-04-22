@@ -120,6 +120,8 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
     stuck_counter = 0
     last_action_key = None
     same_action_count = 0
+    last_summary: Dict[str, Any] = {}
+    last_full_state: Dict[str, Any] = {}
 
     while logger.n_steps < max_steps:
         try:
@@ -196,6 +198,8 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
             agreement = True
 
         summary = _player_summary(state)
+        last_summary = summary
+        last_full_state = state
         if verbose:
             _print_step(logger.n_steps, system, st, summary,
                         proposals, chosen, agreement)
@@ -299,21 +303,17 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
             print(f"[runner] execute error: {e}")
         time.sleep(poll_interval)
 
-    # Final summary
-    try:
-        final = game.get_state("json")
-    except Exception:
-        final = {}
-    final_summary = _player_summary(final) if isinstance(final, dict) else {}
-    won = isinstance(final, dict) and final.get("run", {}).get("won") is True
+    # Final summary — use last recorded state rather than re-querying the game,
+    # which may have already returned to menu with no run data.
+    won = bool(last_full_state.get("run", {}).get("won"))
     logger.write_summary(
-        final=final_summary,
-        final_state_type=(final.get("state_type") if isinstance(final, dict) else None),
+        final=last_summary,
+        final_state_type=last_state_type,
         won=won,
         model=model,
     )
-    print(f"[runner] done: steps={logger.n_steps} final={final_summary}")
-    return final_summary
+    print(f"[runner] done: steps={logger.n_steps} final={last_summary}")
+    return last_summary
 
 
 def main():

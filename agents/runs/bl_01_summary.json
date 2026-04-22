@@ -2,8 +2,8 @@
   "run_id": "bl_01",
   "system": "baseline",
   "seed": null,
-  "total_steps": 98,
-  "wall_seconds": 456.4,
+  "total_steps": 265,
+  "wall_seconds": 1206.0,
   "final": {
     "floor": null,
     "act": null,

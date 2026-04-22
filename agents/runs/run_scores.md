@@ -20,3 +20,7 @@
 | bl_02 | baseline | 4o-mini | None | 0 | 0/1 | ✗ | 0 | 89 | 530.1 |
 | bl_03 | baseline | 4o-mini | None | 0 | 0/1 | ✗ | 0 | 0 | 12.7 |
 | bl_05 | baseline | 4o-mini | None | 0 | 0/1 | ✗ | 0 | 1 | 234.5 |
+| bl_01 | baseline | 4o-mini | None | 0 | 0/1 | ✗ | 0 | 265 | 1206.0 |
+| bl_01 | baseline | 4o-mini | None | 15 | 7/75 | ✗ | 150 | 185 | 778.9 |
+| bl_01 | baseline | 4o-mini | None | 14 | 4/75 | ✗ | 140 | 186 | 837.1 |
+| mas_01 | mas | 4o-mini | None | 15 | 6/75 | ✗ | 150 | 213 | 998.8 |
