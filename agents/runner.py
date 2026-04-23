@@ -299,6 +299,10 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
                 elif "EnergyCostTooHigh" in err and st in _COMBAT_STATES_RUNNER:
                     # Agent proposed a card it can't afford — end turn instead.
                     game.execute("end_turn", {}, state=state)
+                elif "sold out" in err.lower() and st in ("shop", "fake_merchant"):
+                    # Item was already purchased — proceed out of shop.
+                    print(f"[runner] sold-out fallback: proceeding from {st}")
+                    game.execute("proceed", {}, state=state)
         except Exception as e:
             print(f"[runner] execute error: {e}")
         time.sleep(poll_interval)

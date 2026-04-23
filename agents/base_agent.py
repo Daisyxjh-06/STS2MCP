@@ -25,6 +25,7 @@ class Agent:
         self.llm = llm
         self.run_id = run_id
         self.system_prompt = _load_prompt(self.prompt_file)
+        self.extra_context: str = ""  # injected by coordinator before certain phases
 
     def view(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Override in subclasses to filter state."""
@@ -34,7 +35,9 @@ class Agent:
         """Return {'action': {'tool': str, 'params': {...}}, 'confidence': float, 'justification': str}."""
         local = self.view(state)
         state_type = local.get("state_type", "unknown")
+        prefix = f"## Pre-computed Context\n{self.extra_context}\n\n" if self.extra_context else ""
         query = (
+            f"{prefix}"
             f"Current screen: {state_type}\n"
             "Current local game state (JSON):\n"
             f"{json.dumps(local, ensure_ascii=False)[:12000]}\n\n"

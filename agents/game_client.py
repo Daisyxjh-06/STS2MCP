@@ -393,6 +393,18 @@ def _normalize_params(tool: str, params: Dict[str, Any], state: Dict[str, Any]) 
             if alt is not None:
                 p["slot"] = alt
         p.pop("potion_index", None); p.pop("index", None); p.pop("potion_slot", None)
+        # Auto-target: if the potion targets an enemy but no target provided, pick first living enemy.
+        if tool == "use_potion" and not p.get("target"):
+            potions = (state.get("player") or {}).get("potions") or []
+            potion = next((pot for pot in potions if pot.get("slot") == p.get("slot")), None)
+            if potion:
+                ttype = (potion.get("target_type") or "").lower()
+                if ttype in ("anyenemy", "enemy", "singleenemy"):
+                    enemies = ((state.get("battle") or {}).get("enemies")) or []
+                    for e in enemies:
+                        if (e or {}).get("hp", 0) > 0 and e.get("entity_id"):
+                            p["target"] = e["entity_id"]
+                            break
 
     elif tool == "choose_event":
         if "index" not in p:

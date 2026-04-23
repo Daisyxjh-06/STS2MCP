@@ -28,3 +28,4 @@
 | bl_06 | baseline | 4o-mini | None | 18 | 75/75 | ✗ | 180 | 391 | 1428.2 |
 | bl_06 | baseline | 4o-mini | None | 28 | 18/75 | ✗ | 280 | 188 | 760.9 |
 | bl_07 | baseline | 4o-mini | None | 15 | 13/75 | ✗ | 150 | 173 | 748.5 |
+| mas_01 | mas | 4o-mini | None | 38 | 1/72 | ✗ | 380 | 41 | 192.1 |

@@ -1,12 +1,21 @@
 """Coordinator: routes state types to relevant agents and arbitrates."""
 from __future__ import annotations
 
+import json
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from combat_agent import CombatAgent
 from economy_agent import EconomyAgent
 from strategic_agent import StrategicAgent
+
+_COMBAT_STATES = {"monster", "elite", "boss"}
+
+_DECK_ANALYST_SYSTEM = (
+    "You are an expert Slay the Spire 2 deck analyst. "
+    "Be concise and specific about card names and mechanics."
+)
+
 
 # Which agents participate in each state_type decision.
 #
@@ -72,12 +81,39 @@ ROUTING: Dict[str, List[str]] = {
 class Coordinator:
     def __init__(self, llm, run_id: str):
         self.run_id = run_id
+        self.llm = llm
         self.agents = {
             "combat": CombatAgent(llm, run_id),
             "strategic": StrategicAgent(llm, run_id),
             "economy": EconomyAgent(llm, run_id),
         }
         self._executor = ThreadPoolExecutor(max_workers=3)
+        self._last_combat_floor: int = -1
+
+    def _generate_deck_summary(self, state: Dict[str, Any]) -> str:
+        player = state.get("player") or {}
+        deck = player.get("deck") or []
+        relics = [r.get("id") if isinstance(r, dict) else r for r in player.get("relics") or []]
+        floor = (state.get("run") or {}).get("floor", "?")
+        query = (
+            f"Floor {floor} combat starting.\n"
+            f"Full deck: {json.dumps(deck, ensure_ascii=False)}\n"
+            f"Relics: {json.dumps(relics, ensure_ascii=False)}\n\n"
+            "In 3 sentences max, summarize: "
+            "(1) the deck's archetype and win condition, "
+            "(2) key synergies or combo lines to execute, "
+            "(3) any card ordering constraints — cards that must be played before others "
+            "can be played or that unlock/enable other cards."
+        )
+        try:
+            summary = self.llm.generate(
+                _DECK_ANALYST_SYSTEM, query,
+                session_id=f"{self.run_id}-deck-analysis",
+            )
+            return summary.strip()[:800]
+        except Exception as e:
+            print(f"[coordinator] deck summary failed: {e}")
+            return ""
 
     def relevant_agents(self, state_type: str) -> List[str]:
         return ROUTING.get(state_type, ["strategic"])
@@ -85,6 +121,16 @@ class Coordinator:
     def decide(self, state: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]], bool]:
         """Returns (chosen_action, all_proposals, agreement_flag)."""
         state_type = state.get("state_type", "unknown")
+
+        # Generate deck summary once per new combat floor so the combat agent
+        # doesn't re-analyze the deck every single step.
+        if state_type in _COMBAT_STATES:
+            floor = (state.get("run") or {}).get("floor", -1)
+            if floor != self._last_combat_floor:
+                self._last_combat_floor = floor
+                print(f"[coordinator] new combat at floor {floor} — generating deck summary")
+                self.agents["combat"].extra_context = self._generate_deck_summary(state)
+
         names = self.relevant_agents(state_type)
 
         if len(names) == 1:

@@ -37,12 +37,25 @@ def _parse_energy(energy_raw: Any) -> int:
 
 
 def _annotate_hand(hand: Any, energy: int) -> Any:
-    """Add can_play flag to each card based on current energy."""
+    """Add/correct can_play flag for each card.
+
+    The game API already sends can_play + unplayable_reason. We trust it for
+    non-energy reasons (e.g. a curse that must be played first locks other
+    cards with unplayable_reason='Unplayable'). We only recompute can_play
+    when the reason is purely energy — the API value may lag one frame.
+    """
     if not isinstance(hand, list):
         return hand
     result = []
     for card in hand:
         if isinstance(card, dict):
+            game_can_play = card.get("can_play")
+            reason = card.get("unplayable_reason")
+            # If the game marks a card unplayable for a non-energy reason,
+            # keep that verdict — don't let our energy check flip it to true.
+            if game_can_play is False and reason not in (None, "NotEnoughEnergy"):
+                result.append(card)
+                continue
             cost_raw = card.get("cost")
             try:
                 cost = int(cost_raw)
@@ -131,8 +144,28 @@ def for_strategic(state: Dict[str, Any]) -> Dict[str, Any]:
     # Only include data for the current active screen.
     k = _SCREEN_KEY.get(state.get("state_type", ""))
     if k and k in state:
-        view[k] = state[k]
+        raw = state[k]
+        view[k] = _filter_shop(raw) if k in ("shop", "fake_merchant") else raw
     return view
+
+
+def _filter_shop(shop: Any) -> Any:
+    """Remove sold-out items so agents never attempt to purchase them.
+
+    Handles both flat shop objects {"items": [...]} and the fake_merchant
+    wrapper {"shop": {"items": [...]}, ...}.
+    """
+    if not isinstance(shop, dict):
+        return shop
+    # Flat shop: {"items": [...], "can_proceed": ...}
+    items = shop.get("items")
+    if isinstance(items, list):
+        return {**shop, "items": [it for it in items if it.get("is_stocked", True)]}
+    # Fake merchant wrapper: {"shop": {...}, "event_name": ..., ...}
+    nested = shop.get("shop")
+    if isinstance(nested, dict):
+        return {**shop, "shop": _filter_shop(nested)}
+    return shop
 
 
 def for_economy(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -150,7 +183,8 @@ def for_economy(state: Dict[str, Any]) -> Dict[str, Any]:
     # Only include data for the current active screen.
     k = _SCREEN_KEY.get(state.get("state_type", ""))
     if k and k in state:
-        view[k] = state[k]
+        raw = state[k]
+        view[k] = _filter_shop(raw) if k in ("shop", "fake_merchant") else raw
     return view
 
 
