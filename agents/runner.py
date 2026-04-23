@@ -187,6 +187,19 @@ def run_one(system: str, run_id: str, out_dir: Path, model: str,
             if play_phase is False or (isinstance(turn, str) and turn.lower() == "enemy"):
                 time.sleep(poll_interval)
                 continue
+            # If no card in hand is playable, skip the agent entirely and end
+            # the turn. Otherwise the LLM keeps proposing invalid card_indexes
+            # and the same-action fallback can't catch it (each index differs).
+            hand = (state.get("player") or {}).get("hand") or []
+            any_playable = any(c.get("can_play") is True for c in hand)
+            if not any_playable:
+                print(f"[runner] no playable cards (hand={len(hand)}) — auto end_turn")
+                try:
+                    game.execute("end_turn", {}, state=state)
+                except Exception as e:
+                    print(f"[runner] auto end_turn error: {e}")
+                time.sleep(poll_interval)
+                continue
 
         # Decide
         if coordinator is not None:

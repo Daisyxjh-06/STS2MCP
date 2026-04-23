@@ -2850,3 +2850,12 @@
 [llm] 429 rate limit, retrying in 40.0s (attempt 3/6)
 [llm] 429 rate limit, retrying in 60.0s (attempt 4/6)
 [llm] 429 rate limit, retrying in 60.0s (attempt 5/6)
+
+[1m────────────────────────────────────────────────────────────[0m
+[1mStep  378[0m  [36melite             [0m  Floor 15  HP 40/75  Gold 240
+[2msystem: baseline[0m
+  [32m✓[0m [36m[1mbaseline    [0m  [conf=0.0]  [33mnoop[0m()
+    [2mLLM error: LLMProxy error: {'error': 'HTTP 429: {"message":"Limit Exceeded"}', 'status_code': 429}[0m
+[runner] LLM-error noop, sleeping 15s before retry
+[runner] giving up after repeated get_state errors: [Errno 61] Connection refused
+[runner] done: steps=379 final={'floor': 15, 'act': 1, 'hp': 40, 'max_hp': 75, 'gold': 240, 'deck_size': 0}
