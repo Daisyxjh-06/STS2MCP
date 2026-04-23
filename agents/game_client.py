@@ -408,6 +408,25 @@ def _normalize_params(tool: str, params: Dict[str, Any], state: Dict[str, Any]) 
         for k in ("choose_event", "option_index", "choice", "option", "card_index"):
             p.pop(k, None)
 
+    elif tool == "choose_map_node":
+        # LLMs sometimes use {col, row} (the fields they see in map.next_options)
+        # instead of the required {index}. Resolve via lookup.
+        if "index" not in p:
+            options = (state.get("map") or {}).get("next_options") or []
+            col = p.get("col")
+            row = p.get("row")
+            idx = None
+            if col is not None and row is not None:
+                for o in options:
+                    if o.get("col") == col and o.get("row") == row:
+                        idx = o.get("index")
+                        break
+            if idx is None:
+                # Fall back: first option, which matches _NON_COMBAT_END_TURN_FALLBACK.
+                idx = (options[0].get("index", 0) if options else 0)
+            p["index"] = idx
+        p.pop("col", None); p.pop("row", None); p.pop("type", None); p.pop("node", None)
+
     elif tool == "claim_reward":
         if "index" not in p:
             items = (state.get("rewards") or {}).get("items") or []

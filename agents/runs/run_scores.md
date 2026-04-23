@@ -24,3 +24,7 @@
 | bl_01 | baseline | 4o-mini | None | 15 | 7/75 | ✗ | 150 | 185 | 778.9 |
 | bl_01 | baseline | 4o-mini | None | 14 | 4/75 | ✗ | 140 | 186 | 837.1 |
 | mas_01 | mas | 4o-mini | None | 15 | 6/75 | ✗ | 150 | 213 | 998.8 |
+| bl_06 | baseline | 4o-mini | None | 6 | 62/75 | ✗ | 60 | 92 | 377.7 |
+| bl_06 | baseline | 4o-mini | None | 18 | 75/75 | ✗ | 180 | 391 | 1428.2 |
+| bl_06 | baseline | 4o-mini | None | 28 | 18/75 | ✗ | 280 | 188 | 760.9 |
+| bl_07 | baseline | 4o-mini | None | 15 | 13/75 | ✗ | 150 | 173 | 748.5 |

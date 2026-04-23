@@ -75,7 +75,18 @@
       "Bash(tee runs/bl_05.log)",
       "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/python -u -c ' *)",
       "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/python *)",
-      "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/jupyter nbconvert *)"
+      "Bash(/Users/Daisy_1/Desktop/cs150-01/final_proj/mcp/.venv/bin/jupyter nbconvert *)",
+      "Bash(curl -s http://localhost:15526/state)",
+      "Bash(curl -sv -X POST http://localhost:15526/get_game_state -H 'Content-Type: application/json' -d '{}')",
+      "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"end_turn\"}')",
+      "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"end_turn\"}' sleep 4 curl -s \"http://127.0.0.1:15526/api/v1/singleplayer?format=json\")",
+      "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"select_card\",\"index\":2}')",
+      "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"confirm_selection\"}')",
+      "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"proceed\"}')",
+      "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"cancel_selection\"}')",
+      "Bash(grep -v \".venv\\\\|node_modules\\\\|__pycache__\\\\|\\\\.log\\\\|\\\\.jsonl\\\\|\\\\.md$\")",
+      "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"end_turn\"}' sleep 3 curl -s \"http://127.0.0.1:15526/api/v1/singleplayer?format=json\")",
+      "Bash(curl -s -X POST http://localhost:15526/api/v1/singleplayer -H 'Content-Type: application/json' -d '{\"action\":\"get_game_state\"}')"
     ]
   },
   "enableAllProjectMcpServers": true,

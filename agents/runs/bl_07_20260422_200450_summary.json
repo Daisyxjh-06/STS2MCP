@@ -1,0 +1,19 @@
+{
+  "run_id": "bl_07",
+  "system": "baseline",
+  "seed": null,
+  "total_steps": 473,
+  "wall_seconds": null,
+  "final": {
+    "floor": 9,
+    "act": null,
+    "hp": 54,
+    "max_hp": 75,
+    "gold": 168,
+    "deck_size": 0
+  },
+  "final_state_type": "monster",
+  "won": false,
+  "model": "4o-mini",
+  "note": "runner SIGKILLed prematurely; continuation logged under second timestamp"
+}
