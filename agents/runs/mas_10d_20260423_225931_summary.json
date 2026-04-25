@@ -1,0 +1,18 @@
+{
+  "run_id": "mas_10d",
+  "system": "mas",
+  "seed": null,
+  "total_steps": 130,
+  "wall_seconds": 803.0,
+  "final": {
+    "floor": 37,
+    "act": 3,
+    "hp": 47,
+    "max_hp": 81,
+    "gold": 294,
+    "deck_size": 0
+  },
+  "final_state_type": "rewards",
+  "won": false,
+  "model": "4o-mini"
+}

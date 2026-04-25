@@ -86,7 +86,15 @@
       "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"cancel_selection\"}')",
       "Bash(grep -v \".venv\\\\|node_modules\\\\|__pycache__\\\\|\\\\.log\\\\|\\\\.jsonl\\\\|\\\\.md$\")",
       "Bash(curl -sX POST \"http://127.0.0.1:15526/api/v1/singleplayer\" -H 'Content-Type: application/json' -d '{\"action\":\"end_turn\"}' sleep 3 curl -s \"http://127.0.0.1:15526/api/v1/singleplayer?format=json\")",
-      "Bash(curl -s -X POST http://localhost:15526/api/v1/singleplayer -H 'Content-Type: application/json' -d '{\"action\":\"get_game_state\"}')"
+      "Bash(curl -s -X POST http://localhost:15526/api/v1/singleplayer -H 'Content-Type: application/json' -d '{\"action\":\"get_game_state\"}')",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(curl -s http://localhost:15526/)",
+      "Bash(curl -s http://localhost:15526/get_game_state)",
+      "Bash(nohup python *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s \"http://127.0.0.1:15526/api/v1/singleplayer?format=markdown\")",
+      "Bash(kill 42436)"
     ]
   },
   "enableAllProjectMcpServers": true,
